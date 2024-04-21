@@ -11,6 +11,7 @@ import logging
 import config 
 import traceback
 from datetime import datetime
+import os
 
 app = FastAPI()
 
@@ -41,10 +42,12 @@ logger = logging.getLogger(__name__)
 # データベースへの接続を取得
 def get_db_connection():
     # MySQL設定(Azure)
-    MYSQL_SERVER = config.MYSQL_SERVER_ONASURE
-    MYSQL_USER = config.MYSQL_USER_ONASURE
-    MYSQL_PASSWORD = config.MYSQL_PASSWORD_ONASURE
-    MYSQL_DB = config.MYSQL_DB_ONASURE
+    # 環境変数からデータベース接続情報を取得
+    MYSQL_SERVER = os.getenv('MYSQL_SERVER')
+    MYSQL_USER = os.getenv('MYSQL_USER')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
+    MYSQL_DB = os.getenv('MYSQL_DB')
+
 
     # MySQL設定(Local)
     #MYSQL_SERVER = config.MYSQL_SERVER
@@ -53,7 +56,7 @@ def get_db_connection():
     #MYSQL_DB = config.MYSQL_DB
 
     # SSLの設定
-    SSL_CONFIG = config.MYSQL_SSL_CONFIG 
+    SSL_CONFIG = os.getenv('MYSQL_SSL_CONFIG')
 
     # データベースに接続する
     engine = create_engine(f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}/{MYSQL_DB}?ssl_ca={SSL_CONFIG}", echo=True)
