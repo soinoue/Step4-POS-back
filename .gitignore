@@ -3,3 +3,5 @@ config.py
 /__pycache__
 /venv
 /.env
+
+DigiCertGlobalRootCA.crt.pem
