@@ -4,4 +4,4 @@ config.py
 /venv
 /.env
 
-DigiCertGlobalRootCA.crt.pem
+*.pem
