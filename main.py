@@ -12,8 +12,8 @@ import logging
 import traceback
 from datetime import datetime
 import os
-import requests
-import ssl
+# import requests
+# import ssl
 
 app = FastAPI()
 
