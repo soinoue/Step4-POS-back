@@ -15,6 +15,8 @@ import os
 
 app = FastAPI()
 
+FRONT_SERVER = os.getenv('FRONT_SERVER')
+
 # 通信許可するドメインリスト
 origins = [
     "http://localhost:3000",
@@ -24,9 +26,13 @@ origins = [
     "http://localhost:3000/kawana_Lv3",
     "http://localhost:3000/02_MenuList",
     "http://localhost:3000/05_MenuDetail",
-    "tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
     "*",
 ]
+
+# 環境変数があればCORSに追加
+if FRONT_SERVER:
+    origins.append(FRONT_SERVER)
+
 
 # CORSを回避するために追加
 app.add_middleware(
