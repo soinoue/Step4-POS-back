@@ -24,6 +24,7 @@ origins = [
     "http://localhost:3000/kawana_Lv3",
     "http://localhost:3000/02_MenuList",
     "http://localhost:3000/05_MenuDetail",
+    "tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
     "*",
 ]
 
