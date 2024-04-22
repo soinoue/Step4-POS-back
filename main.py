@@ -66,16 +66,9 @@ def get_db_connection():
 
     # SSLの設定
     SSL_CONFIG = os.getenv('SSL_CONFIG')
-    # 証明書をダウンロード
-    response = requests.get(f'{SSL_CONFIG}')
-    with open('downloaded_cert.pem', 'wb') as f:
-        f.write(response.content)
-
-    # SSLコンテキストの作成
-    ssl_context = ssl.create_default_context(cafile='downloaded_cert.pem')
 
     # データベースに接続する
-    engine = create_engine(f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}/{MYSQL_DB}?ssl_ca={ssl_context}", echo=True)
+    engine = create_engine(f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}/{MYSQL_DB}?ssl_ca={SSL_CONFIG}", echo=True)
 
     # SQLiteの場合
     #DB_FILE = "pop-make-up_DB.db"
