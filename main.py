@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import date, datetime
 from typing import List, Optional
 import logging 
-import config 
+# import config 
 import traceback
 from datetime import datetime
 import os
