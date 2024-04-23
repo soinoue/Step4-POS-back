@@ -25,7 +25,7 @@ origins = [
 ]
 
 # 環境変数があればCORSに追加
-FRONT_SERVER = os.environ.get('FRONT_SERVER')
+FRONT_SERVER = os.getenv('FRONT_SERVER')
 if FRONT_SERVER:
     origins.append(FRONT_SERVER)
 
