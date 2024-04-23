@@ -21,6 +21,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:8001",
+    "http://tech0-gen-5-step4-studentwebapp-4.azurewebsites.net"
     "*",
 ]
 
