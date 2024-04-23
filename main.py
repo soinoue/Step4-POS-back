@@ -65,7 +65,7 @@ def get_db_connection():
     #MYSQL_DB = config.MYSQL_DB
 
     # SSLの設定
-    SSL_CONFIG = os.getenv('ConnectionStrings:SSL_CONFIG')
+    SSL_CONFIG = os.getenv('SSL_CONFIG')
 
     # データベースに接続する
     engine = create_engine(f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}/{MYSQL_DB}?ssl_ca={SSL_CONFIG}", echo=True)
