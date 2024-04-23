@@ -1,40 +1,32 @@
-from fastapi import FastAPI, HTTPException, Body, Depends
-from datetime import datetime, timezone, timedelta
+from fastapi import FastAPI, HTTPException, Body, Depends, status
+from datetime import datetime, date, timedelta, timezone
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Date, Float, ForeignKey, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Date, Float, ForeignKey, Boolean, func
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import date, datetime
-from typing import List, Optional
+from typing import Optional
 import logging 
-# import config 
-import traceback
-from datetime import datetime
+#import config 
+from passlib.context import CryptContext
+from fastapi.params import Depends
+from jose import jwt, JWTError
+from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer
 import os
-# import requests
-# import ssl
 
 app = FastAPI()
-
-FRONT_SERVER = os.getenv('FRONT_SERVER')
 
 # 通信許可するドメインリスト
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:8001",
-    "http://localhost:3000/kawana",
-    "http://localhost:3000/kawana_Lv3",
-    "http://localhost:3000/02_MenuList",
-    "http://localhost:3000/05_MenuDetail",
     "*",
 ]
 
 # 環境変数があればCORSに追加
 if FRONT_SERVER:
     origins.append(FRONT_SERVER)
-
 
 # CORSを回避するために追加
 app.add_middleware(
@@ -48,15 +40,22 @@ app.add_middleware(
 # ロガーのインスタンスを作成する
 logger = logging.getLogger(__name__)
 
+
+# 認証情報 パスワードのハッシュ化
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str):
+    return "hashed_" + password
+#認証情報 SSL
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
+
 # データベースへの接続を取得
 def get_db_connection():
     # MySQL設定(Azure)
-    # 環境変数からデータベース接続情報を取得
     MYSQL_SERVER = os.getenv('MYSQL_SERVER')
     MYSQL_USER = os.getenv('MYSQL_USER')
     MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
     MYSQL_DB = os.getenv('MYSQL_DB')
-
 
     # MySQL設定(Local)
     #MYSQL_SERVER = config.MYSQL_SERVER
@@ -111,7 +110,6 @@ class ReservationData(BaseModel):
     STOCK_ID: int
     USER_ID: str
     MY_COUPON_ID: str
-    #購入方法
     MET: int
     DATE: str
 
@@ -147,11 +145,10 @@ class TransactionRecord(BaseModel):
     DATE: date
 
 
-
 # データベースのテーブルを定義する
 Base = declarative_base()
 
-# Userモデルの定義
+# Userモデルの定義 社員番号を追加
 class User(Base):
     __tablename__ = "users"
 
@@ -160,6 +157,8 @@ class User(Base):
     EMAIL = Column(String, unique=True, index=True)
     PASSWORD = Column(String)
     IS_ACTIVE = Column(Boolean, default=True)
+    employee_Id = Column(Integer,index=True)
+
 
 class Product(Base):
     __tablename__ = "products"
@@ -195,7 +194,6 @@ class Reservation(Base):
     STOCK_ID = Column(Integer, index=True)
     USER_ID = Column(String(13), ForeignKey('users.ID'), index=True)
     MY_COUPON_ID = Column(String(13), ForeignKey('coupons.ID'), index=True)
-    #購入方法
     MET = Column(Integer, index=True)
     DATE = Column(String, index=True)
 
@@ -246,23 +244,100 @@ class Category(Base):
     ID = Column(Integer, primary_key=True, index=True, autoincrement=True, unique=True)
     NAME = Column(String, index=True)
 
+# UserCreate モデルの定義
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
 
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
+#ユーザー登録
+def hash_password(password):
+    return pwd_context.hash(password)
+
+@app.post("/users/")
+def create_user(user: UserCreate, db: Session = Depends(get_db_connection)):
+    db_user = db.query(User).filter(User.EMAIL == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_password = hash_password(user.password)
+    max_id = db.query(func.max(User.employee_Id)).scalar() or 0
+    new_id = max_id + 1
+    db_user = User(USER_NAME=user.username, EMAIL=user.email, PASSWORD=hashed_password,employee_Id=new_id)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+#ログイン
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(User).filter(User.USER_NAME == username).first()
+    if not user:
+        return False
+    if not pwd_context.verify(password, user.PASSWORD):
+        return False
+    return user
+
+@app.post("/token")
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db_connection)):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401, detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=15)
+    access_token = create_access_token(
+        data={"sub": user.USER_NAME}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+#ユーザー情報取得
+def get_user_from_token(db: Session, token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+    user = db.query(User).filter(User.USER_NAME == username).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+#トークンを発行するエンドポイント指定
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+@app.get("/users/me")
+def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db_connection)):
+    user = get_user_from_token(db, token)
+    return user
+
 # 在庫情報をとってくる
-@app.post("/Stocks/")
+@app.post("/Stocks")
 async def stock_product(
     date: str,
     category: str,
     db: Session = Depends(get_db_connection)):
-
-    # strで送られてきているのでdate型に変換する
     client_date = datetime.strptime(date, '%Y-%m-%d')
     formatted_date = client_date.strftime('%Y-%m-%d')
-    #print(category)
 
     try:
         # with文を使って、データベースへの接続を自動的に閉じるようにする
@@ -297,7 +372,7 @@ async def stock_product(
 
 
 # 商品詳細ページ（商品をタップした時）
-@app.post("/Products/")
+@app.post("/Products")
 # クエリパラメータとしてproduct_idを取得する
 async def product_detail(
     ID: int, 
@@ -307,7 +382,6 @@ async def product_detail(
             # プロダクトIDが一致する商品詳細情報を取得
             product = db.query(Product).filter(Product.ID == ID).first()
             return {"status": "success", "data": product}
-
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -321,11 +395,10 @@ async def product_detail(
     
 
 # 予約リストに追加（=購入ボタンを押した時）
-@app.post("/Reservation/")
+@app.post("/Reservation")
 async def create_ReservationData(
     postReservationData: ReservationData = Body(...), 
     db: Session = Depends(get_db_connection)):
-
     try:
         # with文を使って、データベースへの接続を自動的に閉じるようにする
         with db:
@@ -345,7 +418,6 @@ async def create_ReservationData(
             rsv_id = RSV.ID
             # RSV.IDをレスポンスに含める
             return {"RSV_ID": rsv_id }
-        
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -359,11 +431,10 @@ async def create_ReservationData(
     
 
 # 予約リストにクーポン追加（=予約ボタンを押した時）
-@app.post("/CouponReservation/")
+@app.post("/CouponReservation")
 async def create_ReservationData(
     postReservationData: ReservationData = Body(...), 
     db: Session = Depends(get_db_connection)):
-
     try:
         # with文を使って、データベースへの接続を自動的に閉じるようにする
         with db:
@@ -388,7 +459,6 @@ async def create_ReservationData(
                 db.commit()
             # RSV.IDをレスポンスに含める
             return {"RSV_ID": rsv_id }
-        
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -402,13 +472,12 @@ async def create_ReservationData(
 
 
 # 予約リストを表示する
-@app.get("/Reservation/")
+@app.get("/Reservation")
 # クエリパラメータとしてuser_id、dateを取得する
 async def reservation_product(
     user_id: str, 
     date: Optional[str] = None,
     db: Session = Depends(get_db_connection)):
-
     # strで送られてきているのでdate型に変換する
     if date is None or date == 'undefined':
         client_date = datetime.now()
@@ -416,7 +485,6 @@ async def reservation_product(
     else:
         client_date = datetime.strptime(date, '%Y-%m-%d')
         formatted_date = client_date.strftime('%Y-%m-%d')
-
     # CouponをProductのモデルに合うようにデータ加工
     def convert_coupon_to_product(coupon):
         return {
@@ -425,28 +493,22 @@ async def reservation_product(
             "PRD_IMAGE": coupon.IMAGE,
             "DESCRIPTION": coupon.DESCRIPTION,
             "PRICE": -coupon.PRICE,
-            # 他のフィールドはNoneまたは適切なデフォルト値を設定
             "PRD_CODE": None,
             "CAL": None,
             "SALINITY": None,
             "ALLERGY_ID": None,
             "CATEGORY_ID": None,
         }
-
     try:
-        # with文を使って、データベースへの接続を自動的に閉じるようにする
         with db:
             # ユーザーIDが一致する予約情報を取得
             reservations = db.query(Reservation).filter(Reservation.USER_ID == user_id).all()
-
             # date_idを取得
             date_id = db.query(Date).filter_by(DATE = formatted_date).first()
-
             # 予約リストから STOCK_ID, MY_COUPON_ID を取得
             stk_ids = [reservation.STOCK_ID for reservation in reservations]
             myc_ids = [reservation.MY_COUPON_ID for reservation in reservations]
             RSVdates = [reservation.DATE for reservation in reservations]
-
             # PRD_ID に対応する製品レコードをデータベースから取得
             products = []
             for stk_id, myc_id, RSVdate in zip(stk_ids, myc_ids, RSVdates):
@@ -466,15 +528,12 @@ async def reservation_product(
                             coupon = db.query(Coupon).filter(Coupon.ID == my_coupon.COUPON_ID).first()
                             product = convert_coupon_to_product(coupon)
                             products.append(product)
-
                 #else:
                     # 製品が見つからなかった場合は次のfor文へ
                     # continue
                     # ここではエラーを発生させる例を示します
                     # raise HTTPException(status_code=404, detail=f"Product with PRD_ID {stk_id} not found")
-
             return {"status": "success", "data": products}
-        
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -488,18 +547,16 @@ async def reservation_product(
 
 
 # マイクーポン情報取得
-@app.get("/MyCoupon/")
+@app.get("/MyCoupon")
 # クエリパラメータとしてuser_idを取得する
 async def my_coupon(
     user_id: int, 
     db: Session = Depends(get_db_connection)):
-
     try:
         # with文を使って、データベースへの接続を自動的に閉じるようにする
         with db:
             # ユーザーIDが一致するクーポン情報を取得
             my_coupons = db.query(MyCoupon).filter(MyCoupon.USER_ID == user_id, MyCoupon.STATUS == 1).all()
-
             # USER_IDに対応するクーポンレコードをデータベースから取得
             if my_coupons:
                 combined_my_coupon_data = []
@@ -510,7 +567,6 @@ async def my_coupon(
                     combined_dict = {**coupon_dict, **my_coupon_dict}  # クーポン情報とまいクーポン情報の2つの辞書を結合
                     combined_my_coupon_data.append(combined_dict)
                 return {"status": "success", "data": combined_my_coupon_data}
-        
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -524,13 +580,11 @@ async def my_coupon(
 
 
 # 商品受け取り時の処理（バーコードで読み取る場合）
-@app.post("/TransactionData/")
+@app.post("/TransactionData")
 async def transactionData(
     user_id: str,
     prd_code: str,
     db: Session = Depends(get_db_connection)):
-
-
     try:
         # with文を使って、データベースへの接続を自動的に閉じるようにする
         with db:
@@ -540,43 +594,33 @@ async def transactionData(
             formatted_date = today.date()
             # 今日の日付のidを取得
             date_id = db.query(Date).filter_by(DATE = formatted_date).first().ID
-
             # prd_codeからprd_id取得
             prd_data = db.query(Product).filter(Product.PRD_CODE == prd_code).first()
-
             # stocksTable内のdate、productが一致するレコードを取得
             ##### "1"の部分を本来はdate_idにすること（動かすために便宜的に1を代入） 
             stocks_data = db.query(ProductStocks).filter(ProductStocks.DATE_ID == date_id).filter(ProductStocks.PRD_ID == prd_data.ID).first()
-
             #reservationsTableから該当するレコードを取得 -> user_id、stock_idの2点一致で照合
             reservation_data = db.query(Reservation).filter(Reservation.USER_ID == user_id).filter(Reservation.STOCK_ID == stocks_data.ID).first()
             Product_id = prd_data.ID
-
             # Transactionクラスのインスタンスを作成する
             trd = TransactionData(
                 USER_ID = user_id, 
                 PRD_ID = Product_id, 
                 DATE = formatted_date,
             )
-
             # データベースにインスタンスを追加
             db.add(trd)
             db.commit()
-
             # 自動採番されたIDを取得
             trd_id = trd.ID
-
             # 数量を1減らす
             stocks_data.PIECES -= 1
             db.commit()
-
             # reservationsTableの該当するレコードを削除
             #db.delete(reservation_data)
             #db.commit()
-
             # IDをレスポンスに含める
             return {"TRD_ID": trd_id, "PRD": prd_data, "message": "Stock pieces decreased successfully. and Transaction data recorded." }
-        
     # 例外が発生した場合
     except Exception as e:
         # ログにエラーを出力
@@ -589,8 +633,6 @@ async def transactionData(
         raise HTTPException(status_code=500, detail=f"Error processing data: {e}\n{error_trace}")
 
         
-
-
 
 # # /transactionStatementData/というエンドポイントにPOSTリクエストを送ると、取引明細データのリストを受け取って、データベースに保存
 # @app.post("/transactionStatementData/")
@@ -636,10 +678,10 @@ async def transactionData(
 #     # 例外が発生した場合
 #     except Exception as e:
         # ログにエラーを出力
-        logger.error(f"A transactionData error occurred: {e}", exc_info=True)
+        #logger.error(f"A transactionData error occurred: {e}", exc_info=True)
         # tracebackモジュールをインポート
-        import traceback
+        #import traceback
         # エラーのスタックトレースを文字列に変換
-        error_trace = traceback.format_exc()
+        #error_trace = traceback.format_exc()
         # HTTPExceptionを発生させて、ステータスコードを500にし、詳細をエラーとスタックトレースにする
-        raise HTTPException(status_code=500, detail=f"Error processing data: {e}\n{error_trace}")
+        #raise HTTPException(status_code=500, detail=f"Error processing data: {e}\n{error_trace}")
