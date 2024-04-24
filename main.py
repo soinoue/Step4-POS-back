@@ -18,9 +18,11 @@ app = FastAPI()
 
 # 通信許可するドメインリスト
 origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1:8001",
+    "https://localhost:3000",
+    "https://127.0.0.1:8000",
+    "https://127.0.0.1:8001",
+    "https://127.0.0.1:8001",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
     "*",
 ]
 
@@ -57,7 +59,7 @@ def get_db_connection():
     MYSQL_USER = os.getenv('MYSQL_USER')
     MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
     MYSQL_DB = os.getenv('MYSQL_DB')
-
+    
     # MySQL設定(Local)
     #MYSQL_SERVER = config.MYSQL_SERVER
     #MYSQL_USER = config.MYSQL_USER
