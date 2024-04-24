@@ -24,6 +24,16 @@ origins = [
     "https://127.0.0.1:8001",
     "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
     "*",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/03_Top",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_UserRegistration",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_MenuList",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/05_MenuDetail",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/03_Top",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_UserRegistration",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_MenuList",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/05_MenuDetail",
 ]
 
 # 環境変数があればCORSに追加
