@@ -22,7 +22,7 @@ origins = [
     "https://127.0.0.1:8000",
     "https://127.0.0.1:8001",
     "https://127.0.0.1:8001",
-    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
     "*",
 ]
 
