@@ -18,12 +18,23 @@ app = FastAPI()
 
 # 通信許可するドメインリスト
 origins = [
-    "https://localhost:3000",
-    "https://127.0.0.1:8000",
-    "https://127.0.0.1:8001",
-    "https://127.0.0.1:8001",
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8001",
+    "http://localhost:3000/kawana",
+    "http://localhost:3000/kawana_Lv3",
+    "http://localhost:3000/02_MenuList",
+    "http://localhost:3000/05_MenuDetail",
     "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
-    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/03_Top",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_UserRegistration",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_MenuList",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/05_MenuDetail",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/03_Top",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_UserRegistration",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/02_MenuList",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/05_MenuDetail",
     # "*",
 ]
 
@@ -297,7 +308,7 @@ def authenticate_user(db: Session, username: str, password: str):
         return False
     return user
 
-@app.post("/token/")
+@app.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db_connection)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -329,7 +340,7 @@ def get_user_from_token(db: Session, token: str):
 #トークンを発行するエンドポイント指定
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-@app.get("/users/me/")
+@app.get("/users/me")
 def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db_connection)):
     user = get_user_from_token(db, token)
     return user
