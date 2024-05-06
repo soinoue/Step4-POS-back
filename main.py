@@ -23,6 +23,7 @@ origins = [
     "https://127.0.0.1:8001",
     "https://127.0.0.1:8001",
     "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
+    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
     "*",
 ]
 
@@ -334,7 +335,7 @@ def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get
     return user
 
 # 在庫情報をとってくる
-@app.post("/Stocks")
+@app.post("/Stocks/")
 async def stock_product(
     date: str,
     category: str,
@@ -375,7 +376,7 @@ async def stock_product(
 
 
 # 商品詳細ページ（商品をタップした時）
-@app.post("/Products")
+@app.post("/Products/")
 # クエリパラメータとしてproduct_idを取得する
 async def product_detail(
     ID: int, 
@@ -398,7 +399,7 @@ async def product_detail(
     
 
 # 予約リストに追加（=購入ボタンを押した時）
-@app.post("/Reservation")
+@app.post("/Reservation/")
 async def create_ReservationData(
     postReservationData: ReservationData = Body(...), 
     db: Session = Depends(get_db_connection)):
@@ -434,7 +435,7 @@ async def create_ReservationData(
     
 
 # 予約リストにクーポン追加（=予約ボタンを押した時）
-@app.post("/CouponReservation")
+@app.post("/CouponReservation/")
 async def create_ReservationData(
     postReservationData: ReservationData = Body(...), 
     db: Session = Depends(get_db_connection)):
@@ -475,7 +476,7 @@ async def create_ReservationData(
 
 
 # 予約リストを表示する
-@app.get("/Reservation")
+@app.get("/Reservation/")
 # クエリパラメータとしてuser_id、dateを取得する
 async def reservation_product(
     user_id: str, 
@@ -550,7 +551,7 @@ async def reservation_product(
 
 
 # マイクーポン情報取得
-@app.get("/MyCoupon")
+@app.get("/MyCoupon/")
 # クエリパラメータとしてuser_idを取得する
 async def my_coupon(
     user_id: int, 
@@ -583,7 +584,7 @@ async def my_coupon(
 
 
 # 商品受け取り時の処理（バーコードで読み取る場合）
-@app.post("/TransactionData")
+@app.post("/TransactionData/")
 async def transactionData(
     user_id: str,
     prd_code: str,
