@@ -23,7 +23,7 @@ origins = [
     "https://127.0.0.1:8001",
     "https://127.0.0.1:8001",
     "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
-    "http://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
+    "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
     "*",
 ]
 
@@ -297,7 +297,7 @@ def authenticate_user(db: Session, username: str, password: str):
         return False
     return user
 
-@app.post("/token")
+@app.post("/token/")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db_connection)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -329,7 +329,7 @@ def get_user_from_token(db: Session, token: str):
 #トークンを発行するエンドポイント指定
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-@app.get("/users/me")
+@app.get("/users/me/")
 def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db_connection)):
     user = get_user_from_token(db, token)
     return user
