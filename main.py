@@ -24,7 +24,7 @@ origins = [
     "https://127.0.0.1:8001",
     "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net",
     "https://tech0-gen-5-step4-studentwebapp-3.azurewebsites.net/",
-    "*",
+    # "*",
 ]
 
 # 環境変数があればCORSに追加
